@@ -1,0 +1,13 @@
+name: apex
+
+channels:
+  - pytorch
+
+dependencies:
+  - python=3.8
+  - pytorch
+  - jupyter
+  - ipython
+  - numpy
+  - matplotlib
+  - tqdm
