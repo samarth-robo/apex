@@ -19,4 +19,3 @@ dependencies:
     - ray
     - ray[debug]
     - tensorboard
-    - dtw-python

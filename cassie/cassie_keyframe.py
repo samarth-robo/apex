@@ -6,6 +6,7 @@ from .trajectory import *
 from cassie.quaternion_function import *
 from cassie.phase_function import *
 from .rewards import *
+keyframe_reward = KeyFrameReward()
 
 from math import floor
 
@@ -122,7 +123,7 @@ class CassieKeyframeEnv:
         else:
             self.phaselen = 1700  # similar to walking
             self.keyframes = [(self.trajectory.qpos[i], self.trajectory.qvel[i])
-                for i in range(len(self.traectory))]
+                for i in range(len(self.trajectory))]
         self.phase_add = 1
 
         # NOTE: phase_based modifies self.phaselen throughout training
@@ -644,7 +645,7 @@ class CassieKeyframeEnv:
         elif self.reward_func == "aslip_clock" or self.reward_func == "load_clock":
             pass
         # ELSE use simple relationship to define swing and stance duration
-        else:
+        elif self.clock_based:
             if self.reward_func == "switch_clock":
                 if self.speed < self.switch_speed:
                     self.stance_mode = "grounded"
@@ -917,28 +918,28 @@ class CassieKeyframeEnv:
         elif self.reward_func == "aslip_clock":
             self.early_term_cutoff = -99.
             return aslip_clock_reward(self, action)
-        elif self.reward_func == "aslip_old":
+        elif "aslip_old" in self.reward_func:
             self.early_term_cutoff = 0.0
             if 'keyframes' in self.reward_func:
                 return keyframe_reward(self, partial(aslip_old_reward, action=action))
             else:
                 return aslip_old_reward(self, action)
-        elif self.reward_func == "iros_paper":
+        elif "iros_paper" in self.reward_func:
             if 'keyframes' in self.reward_func:
                 return keyframe_reward(self, iros_paper_reward)
             else:
                 return iros_paper_reward(self)
-        elif self.reward_func == "5k_speed_reward":
+        elif "5k_speed_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
                 return keyframe_reward(self, old_speed_reward)
             else:
                 return old_speed_reward(self)
-        elif self.reward_func == "trajmatch_footorient_hiprollvelact_reward":
+        elif "trajmatch_footorient_hiprollvelact_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
                 return keyframe_reward(self, trajmatch_footorient_hiprollvelact_reward)
             else:
                 return trajmatch_footorient_hiprollvelact_reward(self)
-        elif self.reward_func == "speedmatch_footorient_hiprollvelact_reward":
+        elif "speedmatch_footorient_hiprollvelact_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
                 return keyframe_reward(self, speedmatch_footorient_hiprollvelact_reward)
             else:

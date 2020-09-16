@@ -3,7 +3,8 @@ import time
 import torch
 import numpy as np
 
-from cassie import CassieEnv, CassieTrajEnv, CassiePlayground, CassieStandingEnv
+from cassie import CassieEnv, CassieTrajEnv, CassiePlayground, CassieStandingEnv,\
+    CassieKeyframeEnv
 
 def env_factory(path, command_profile="clock", input_profile="full", simrate=50, dynamics_randomization=True, mirror=False, learn_gains=False, reward=None, history=0, no_delta=True, traj=None, ik_baseline=False, **kwargs):
     from functools import partial
@@ -20,7 +21,7 @@ def env_factory(path, command_profile="clock", input_profile="full", simrate=50,
     """
 
     # Custom Cassie Environment
-    if path in ['Cassie-v0', 'CassieTraj-v0', 'CassiePlayground-v0', 'CassieStandingEnv-v0']:
+    if path in ['Cassie-v0', 'CassieTraj-v0', 'CassiePlayground-v0', 'CassieStandingEnv-v0', 'CassieKeyframe-v0']:
 
         if path == 'Cassie-v0':
             env_fn = partial(CassieEnv, command_profile=command_profile, input_profile=input_profile, simrate=simrate, dynamics_randomization=dynamics_randomization, learn_gains=learn_gains, reward=reward, history=history)
@@ -30,6 +31,8 @@ def env_factory(path, command_profile="clock", input_profile="full", simrate=50,
             env_fn = partial(CassiePlayground, command_profile=command_profile, input_profile=input_profile, simrate=simrate, dynamics_randomization=dynamics_randomization, learn_gains=learn_gains, reward=reward, history=history)
         elif path == 'CassieStandingEnv-v0':
             env_fn = partial(CassieStandingEnv, command_profile=command_profile, input_profile=input_profile, simrate=simrate, dynamics_randomization=dynamics_randomization, learn_gains=learn_gains, reward=reward, history=history)
+        elif path == 'CassieKeyframe-v0':
+            env_fn = partial(CassieKeyframeEnv, traj=traj, command_profile=command_profile, input_profile=input_profile, simrate=simrate, dynamics_randomization=dynamics_randomization, no_delta=no_delta, learn_gains=learn_gains, ik_baseline=ik_baseline, reward=reward, history=history)
 
         if mirror:
             from rl.envs.wrappers import SymmetricEnv

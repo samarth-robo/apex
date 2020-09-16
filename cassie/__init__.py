@@ -3,6 +3,7 @@ from .cassie import CassieEnv
 from .cassie_traj import CassieTrajEnv
 from .cassie_playground import CassiePlayground
 from .cassie_standing_env import CassieStandingEnv  # sorta old/unused
+from .cassie_keyframe import CassieKeyframeEnv
 
 # Proprietary
 from .cassie_noaccel_footdist_omniscient import CassieEnv_noaccel_footdist_omniscient

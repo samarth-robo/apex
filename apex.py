@@ -19,7 +19,9 @@ if __name__ == "__main__":
     parser.add_argument("--not_dyn_random", default=True, action='store_false', dest='dyn_random')
     parser.add_argument("--learn_gains", default=False, action='store_true', dest='learn_gains')             # learn PD gains or not
     # attributes for trajectory based environments
-    parser.add_argument("--traj", default="walking", type=str, help="reference trajectory to use. options are 'aslip', 'walking', 'stepping'")
+    parser.add_argument("--traj", default="walking", type=str,
+                        help="reference trajectory to use",
+                        choices=('aslip', 'walking', 'stepping', 'jumping'))
     parser.add_argument("--not_no_delta", default=True, action='store_false', dest='no_delta')
     parser.add_argument("--ik_baseline", default=False, action='store_true', dest='ik_baseline')             # use ik as baseline for aslip + delta policies?
     # mirror loss and reward
