@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--ik_baseline", default=False, action='store_true', dest='ik_baseline')             # use ik as baseline for aslip + delta policies?
     # mirror loss and reward
     parser.add_argument("--not_mirror", default=True, action='store_false', dest='mirror')             # mirror actions or not
-    parser.add_argument("--reward", default=None, type=str)                                             # reward to use. this is a required argument
+    parser.add_argument("--reward", required=True, type=str)                                             # reward to use. this is a required argument
 
     """
         General arguments for configuring the logger

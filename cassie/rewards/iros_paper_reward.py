@@ -1,10 +1,11 @@
 import numpy as np
 
-def iros_paper_reward(self):
+def iros_paper_reward(self, ref_state=None, free_com=False):
     qpos = np.copy(self.sim.qpos())
     qvel = np.copy(self.sim.qvel())
 
-    ref_pos, ref_vel = self.get_ref_state(self.phase)
+    ref_pos, ref_vel = ref_state if ref_state is not None \
+        else self.get_ref_state(self.phase)
 
     # TODO: should be variable; where do these come from?
     # TODO: see magnitude of state variables to gauge contribution to reward
@@ -23,7 +24,8 @@ def iros_paper_reward(self):
         joint_error += 30 * weight[i] * (target - actual) ** 2
 
     # center of mass: x, y, z
-    for j in [0, 1, 2]:
+    idx = [2, ] if free_com else [0, 1, 2]
+    for j in idx:
         target = ref_pos[j]
         actual = qpos[j]
 

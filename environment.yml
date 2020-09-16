@@ -11,3 +11,12 @@ dependencies:
   - numpy
   - matplotlib
   - tqdm
+  - scipy
+  - pandas
+  - lxml
+  - pip
+  - pip:
+    - ray
+    - ray[debug]
+    - tensorboard
+    - dtw-python
