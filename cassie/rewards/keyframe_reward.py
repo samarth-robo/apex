@@ -22,6 +22,10 @@ class KeyFrameReward(object):
 
 def calc_dtw(D, return_match=False):
     I, J = D.shape
+    small_traj = I > J
+    if small_traj:
+      D = D.T
+      I, J = J, I
     inf = np.finfo(D.dtype).max
     C = np.zeros((I, J), dtype=D.dtype)
     C[0, 0] = D[0, 0]
@@ -43,6 +47,9 @@ def calc_dtw(D, return_match=False):
     # plt.figure();
     # plt.imshow(CC, cmap='Reds')
     # plt.title('C')
+    reward = -C[-1, -1]
+    if small_traj:
+      reward = reward / I * J
     if return_match:
         i, j = I-1, J-1
         match = [(i, j)]
@@ -51,6 +58,6 @@ def calc_dtw(D, return_match=False):
             match.append((i, j))
             if i == 0:
                 break
-        return -C[-1, -1], match
+        return reward, match
     else:
-        return -C[-1, -1]
+        return reward

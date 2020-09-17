@@ -921,26 +921,31 @@ class CassieKeyframeEnv:
         elif "aslip_old" in self.reward_func:
             self.early_term_cutoff = 0.0
             if 'keyframes' in self.reward_func:
+                self.early_term_cutoff = -99.
                 return keyframe_reward(self, partial(aslip_old_reward, action=action))
             else:
                 return aslip_old_reward(self, action)
         elif "iros_paper" in self.reward_func:
             if 'keyframes' in self.reward_func:
+                self.early_term_cutoff = -99.
                 return keyframe_reward(self, iros_paper_reward)
             else:
                 return iros_paper_reward(self)
         elif "5k_speed_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
+                self.early_term_cutoff = -99.
                 return keyframe_reward(self, old_speed_reward)
             else:
                 return old_speed_reward(self)
         elif "trajmatch_footorient_hiprollvelact_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
+                self.early_term_cutoff = -99.
                 return keyframe_reward(self, trajmatch_footorient_hiprollvelact_reward)
             else:
                 return trajmatch_footorient_hiprollvelact_reward(self)
         elif "speedmatch_footorient_hiprollvelact_reward" in self.reward_func:
             if 'keyframes' in self.reward_func:
+                self.early_term_cutoff = -99.
                 return keyframe_reward(self, speedmatch_footorient_hiprollvelact_reward)
             else:
                 return speedmatch_footorient_hiprollvelact_reward(self)
