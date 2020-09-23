@@ -29,7 +29,7 @@ def load_reward_clock_funcs(path):
 
 class CassieKeyframeEnv:
     def __init__(self, traj='jumping', simrate=50, command_profile="traj", input_profile="full", dynamics_randomization=True,
-                 learn_gains=False, reward="iros_paper:keyframes",
+                 learn_gains=False, reward="iros_paper_keyframes",
                  no_delta=True, ik_baseline=False,
                  config="./cassie/cassiemujoco/cassie.xml", history=0, **kwargs):
 
@@ -71,11 +71,15 @@ class CassieKeyframeEnv:
             self.aslip_traj = False
             if traj == "walking":
                 traj_path = os.path.join(dirname, "trajectory", "stepdata.bin")
+                self.trajectory = CassieTrajectory(traj_path)
             elif traj == "stepping":
                 traj_path = os.path.join(dirname, "trajectory", "more-poses-trial.bin")
+                self.trajectory = CassieTrajectory(traj_path)
             elif traj == "jumping":
                 traj_path = os.path.join(dirname, "trajectory", "jumping.bin")
-            self.trajectory = CassieTrajectory(traj_path)
+                self.trajectory = CassieKeyframes(traj_path)
+            else:
+                raise NotImplementedError
             self.speed = 0
 
         self.observation_space, self.clock_inds, self.mirrored_obs = self.set_up_state_space()

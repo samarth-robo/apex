@@ -37,3 +37,12 @@ class CassieTrajectory:
 
     def __len__(self):
         return len(self.time)
+
+
+class CassieKeyframes(object):
+    def __init__(self, filepath):
+        self.qpos = np.fromfile(filepath, dtype=np.float).astype(np.double).reshape((-1, 35))
+        self.qvel = np.zeros(self.qpos.shape)
+
+    def __len__(self):
+        return len(self.qpos)
