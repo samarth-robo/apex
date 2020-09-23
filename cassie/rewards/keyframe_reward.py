@@ -34,8 +34,9 @@ class KeyFrameReward(object):
             np.inner([1, 0, 0, 0], env.cassie_state.pelvis.orientation[:])**2
         # COM sideways deviation from center of foot pos
         foot_center = (env.l_foot_pos + env.r_foot_pos) * 0.5
-        com_deviation = np.linalg.norm([foot_center[0]-env.sim.qpos[0],
-                                        foot_center[1]-env.sim.qpos[1]])
+        qpos = np.copy(env.sim.qpos())
+        com_deviation = np.linalg.norm([foot_center[0]-qpos[0],
+                                        foot_center[1]-qpos[1]])
         # TODO: penalize leg plane not being vertical
         reward = 0.4*np.exp(-pelvis_orientation_cost) +\
             0.4*np.exp(-com_deviation) +\

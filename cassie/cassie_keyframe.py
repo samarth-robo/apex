@@ -597,9 +597,10 @@ class CassieKeyframeEnv:
             self.side_speed = np.random.uniform(self.min_side_speed, self.max_side_speed)
 
         if return_omniscient_state:
-            return self.get_full_state(), self.get_omniscient_state(), reward, done, {}
+            return self.get_full_state(), self.get_omniscient_state(), reward, \
+                self.done, {}
         else:
-            return self.get_full_state(), reward, done, {}
+            return self.get_full_state(), reward, self.done, {}
 
     # More basic, faster version of step
     def step_basic(self, action, return_omniscient_state=False):
@@ -640,7 +641,7 @@ class CassieKeyframeEnv:
                 self.phase_state = 2
                 self.landing_phase = self.phase
             elif (self.phase_state == 2) and \
-                    (self.phase > self.landing_phase + 20):
+                    (self.phase > self.landing_phase + 5):
                 self.phase_state = 3
                 self.landing_phase = 0
 
@@ -701,6 +702,7 @@ class CassieKeyframeEnv:
         self.counter = 0
         self.phase_state = 0
         self.landing_phase = 0
+        self.done = False
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 
@@ -840,6 +842,7 @@ class CassieKeyframeEnv:
         self.phase_add = 1
         self.phase_state = 0
         self.landing_phase = 0
+        self.done = False
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 
