@@ -1,6 +1,6 @@
 import numpy as np
 
-def iros_paper_reward(self, ref_state=None, free_com=False):
+def iros_paper_reward(self, ref_state=None):
     qpos = np.copy(self.sim.qpos())
     qvel = np.copy(self.sim.qvel())
 
@@ -24,7 +24,7 @@ def iros_paper_reward(self, ref_state=None, free_com=False):
         joint_error += 30 * weight[i] * (target - actual) ** 2
 
     # center of mass: x, y, z
-    idx = [2, ] if free_com else [0, 1, 2]
+    idx = [0, 1, 2]
     for j in idx:
         target = ref_pos[j]
         actual = qpos[j]

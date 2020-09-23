@@ -56,7 +56,7 @@ class CassieKeyframeEnv:
 
         # Arguments for reward function
         self.reward_func = reward
-        self.early_term_cutoff = 0.3
+        self.early_term_cutoff = -99.0 if 'keyframes' in self.reward_func else 0.3
 
         # CONFIGURE REF TRAJECTORY
         if traj == "aslip":
@@ -109,6 +109,7 @@ class CassieKeyframeEnv:
         self.time    = 0        # number of time steps in current episode
         self.phase   = 0        # portion of the phase the robot is in
         self.counter = 0        # number of phase cycles completed in episode
+        self.done = False
 
         # NOTE: a reference trajectory represents ONE phase cycle
 
@@ -121,10 +122,18 @@ class CassieKeyframeEnv:
         elif 'keyframes' not in self.reward_func:
             self.phaselen = floor(len(self.trajectory) / self.simrate) - 1
         else:
-            self.phaselen = 1700  # similar to walking
+            self.phaselen = 2500  # maximum phase length
             self.keyframes = [(self.trajectory.qpos[i], self.trajectory.qvel[i])
                 for i in range(len(self.trajectory))]
         self.phase_add = 1
+
+        # keeps track of progress:
+        # 0: start
+        # 1: no feet contacting the ground
+        # 2: both feet contacting the ground after being up
+        # 3: some time passes after phase_state 2
+        self.phase_state = 0
+        self.landing_phase = 0
 
         # NOTE: phase_based modifies self.phaselen throughout training
 
@@ -177,10 +186,12 @@ class CassieKeyframeEnv:
         self.r_foot_vel = np.zeros(3)
         self.l_foot_pos = np.zeros(3)
         self.r_foot_pos = np.zeros(3)
-        self.l_foot_orient = 0
-        self.r_foot_orient = 0
+        self.l_foot_orient_cost = 0
+        self.r_foot_orient_cost = 0
         self.hiproll_cost = 0
         self.hiproll_act = 0
+        self.torque_cost = 0
+        self.smooth_cost = 0
 
         # TODO: should this be mujoco tracking var or use state estimator. real command interface will use state est
         # Track pelvis position as baseline for pelvis tracking command inputs
@@ -485,6 +496,8 @@ class CassieKeyframeEnv:
         self.r_foot_orient_cost = 0
         self.hiproll_cost = 0
         self.hiproll_act = 0
+        self.smooth_cost = 0
+        self.torque_cost = 0
 
         if self.learn_gains:
             action, learned_gains = action[0:10], action[10:]
@@ -503,8 +516,8 @@ class CassieKeyframeEnv:
             self.r_foot_frc += foot_forces[1]
             # Relative Foot Position tracking
             self.sim.foot_pos(foot_pos)
-            self.l_foot_pos += foot_pos[0:3]
-            self.r_foot_pos += foot_pos[3:6]
+            self.l_foot_pos = foot_pos[0:3]
+            self.r_foot_pos = foot_pos[3:6]
             # Foot Orientation Cost
             self.l_foot_orient_cost += (1 - np.inner(self.neutral_foot_orient, self.sim.xquat("left-foot")) ** 2)
             self.r_foot_orient_cost += (1 - np.inner(self.neutral_foot_orient, self.sim.xquat("right-foot")) ** 2)
@@ -514,27 +527,26 @@ class CassieKeyframeEnv:
                 self.hiproll_act += 2*np.linalg.norm(self.prev_action[[0, 5]] - action[[0, 5]])
             else:
                 self.hiproll_act += 0
+            curr_torques = np.array(self.cassie_state.motor.torque[:])
+            if self.prev_torque is not None:
+                self.smooth_cost += 0.0001*np.linalg.norm(np.square(curr_torques - self.prev_torque))
+            else:
+                self.smooth_cost += 0
+            self.prev_torque = curr_torques
+            self.torque_cost += 0.00006*np.linalg.norm(np.square(curr_torques))
         
         self.l_foot_frc              /= self.simrate
         self.r_foot_frc              /= self.simrate
-        self.l_foot_pos              /= self.simrate
-        self.r_foot_pos              /= self.simrate
         self.l_foot_orient_cost      /= self.simrate
         self.r_foot_orient_cost      /= self.simrate
         self.hiproll_cost            /= self.simrate
         self.hiproll_act             /= self.simrate
-
-        height = self.sim.qpos()[2]
-        self.curr_action = action
+        self.smooth_cost             /= self.simrate
+        self.torque_cost             /= self.simrate
 
         self.time  += 1
         self.phase += self.phase_add
-
-        if (self.aslip_traj and self.phase >= self.phaselen) or self.phase > self.phaselen:
-            self.last_pelvis_pos = self.sim.qpos()[0:3]
-            self.simsteps = 0
-            self.phase = 0
-            self.counter += 1
+        self.update_phase_state()
 
         # no more knee walking
         # if self.sim.xpos("left-tarsus")[2] < 0.1 or self.sim.xpos("right-tarsus")[2] < 0.1:
@@ -543,29 +555,39 @@ class CassieKeyframeEnv:
             # print("right tarsus: {:.2f}\tright foot: {:.2f}".format(self.sim.xpos("right-tarsus")[2], self.sim.xpos("right-foot")[2]))
             # while(1):
             #     self.vis.draw(self.sim)
-        if height < 0.4 or height > 3.0:
-            done = True
-        else:
-            done = False
+        self.done = False
+        # TODO: make 0.3 a variable/more transparent
+        height = self.sim.qpos()[2]
+        if (height < 0.4) or (height > 5.0):
+            self.done = True
 
         # make sure trackers aren't None and calculate reward
+        self.curr_action = action
         if self.prev_action is None:
             self.prev_action = action
         if self.prev_torque is None:
             self.prev_torque = np.asarray(self.cassie_state.motor.torque[:])
         reward = self.compute_reward(action)
+        if reward < self.early_term_cutoff:
+            self.done = True
 
         # update previous action
         self.prev_action = action
         # update previous torque
         self.prev_torque = np.asarray(self.cassie_state.motor.torque[:])
 
-        # TODO: make 0.3 a variable/more transparent
-        if reward < self.early_term_cutoff:
-            done = True
+        if (self.aslip_traj and self.phase >= self.phaselen) or \
+                (self.phase > self.phaselen) or (self.phase_state == 3):
+            self.last_pelvis_pos = self.sim.qpos()[0:3]
+            self.simsteps = 0
+            self.phase = 0
+            self.counter += 1
+            self.phase_state = 0
+            self.landing_phase = 0
 
         if np.random.randint(300) == 0:  # random changes to orientation
-            self.orient_add += np.random.uniform(-self.max_orient_change, self.max_orient_change)
+            self.orient_add += np.random.uniform(-self.max_orient_change,
+                                                 self.max_orient_change)
 
         if np.random.randint(100) == 0:  # random changes to speed
             self.speed = np.random.uniform(self.min_speed, self.max_speed)
@@ -594,17 +616,33 @@ class CassieKeyframeEnv:
 
         self.time  += 1
         self.phase += self.phase_add
+        self.update_phase_state()
 
-        if (self.aslip_traj and self.phase >= self.phaselen) or self.phase > self.phaselen:
+        if (self.aslip_traj and self.phase >= self.phaselen) or \
+                (self.phase > self.phaselen) or (self.phase_state == 3):
             self.last_pelvis_pos = self.sim.qpos()[0:3]
             self.simsteps = 0
             self.phase = 0
             self.counter += 1
+            self.phase_state = 0
+            self.landing_phase = 0
 
         if return_omniscient_state:
             return self.get_full_state(), self.get_omniscient_state()
         else:
             return self.get_full_state()
+
+    def update_phase_state(self):
+        if self.l_high and self.r_high:
+            self.phase_state = 1
+        elif not (self.l_high or self.r_high):
+            if self.phase_state == 1:
+                self.phase_state = 2
+                self.landing_phase = self.phase
+            elif (self.phase_state == 2) and \
+                    (self.phase > self.landing_phase + 20):
+                self.phase_state = 3
+                self.landing_phase = 0
 
     def reset(self):
 
@@ -658,9 +696,11 @@ class CassieKeyframeEnv:
 
         self.simsteps = 0
 
-        self.phase = random.randint(0, floor(self.phaselen))
+        self.phase = 0
         self.time = 0
         self.counter = 0
+        self.phase_state = 0
+        self.landing_phase = 0
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 
@@ -784,6 +824,10 @@ class CassieKeyframeEnv:
         self.r_foot_orient_cost = 0
         self.hiproll_cost = 0
         self.hiproll_act = 0
+        self.torque_cost = 0
+        self.smooth_cost = 0
+        self.prev_action = None
+        self.prev_torque = None
 
         return self.get_full_state()
 
@@ -794,6 +838,8 @@ class CassieKeyframeEnv:
         self.counter = 0
         self.orient_add = 0
         self.phase_add = 1
+        self.phase_state = 0
+        self.landing_phase = 0
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 
@@ -826,8 +872,6 @@ class CassieKeyframeEnv:
             self.last_pelvis_pos = self.sim.qpos()[0:3]
             self.l_foot_frc = 0
             self.r_foot_frc = 0
-            self.l_foot_orient = 0
-            self.r_foot_orient = 0
 
             # Need to reset u? Or better way to reset cassie_state than taking step
             self.cassie_state = self.sim.step_pd(self.u)
@@ -848,6 +892,16 @@ class CassieKeyframeEnv:
         if self.joint_rand:
             self.motor_encoder_noise = np.zeros(10)
             self.joint_encoder_noise = np.zeros(6)
+
+        # reward terms
+        self.l_foot_orient_cost = 0
+        self.r_foot_orient_cost = 0
+        self.smooth_cost = 0
+        self.torque_cost = 0
+        self.hiproll_act = 0
+        self.hiproll_cost = 0
+        self.prev_action = None
+        self.prev_torque = None
 
         return self.get_full_state()
 
@@ -918,37 +972,19 @@ class CassieKeyframeEnv:
         elif self.reward_func == "aslip_clock":
             self.early_term_cutoff = -99.
             return aslip_clock_reward(self, action)
-        elif "aslip_old" in self.reward_func:
+        elif self.reward_func == "aslip_old":
             self.early_term_cutoff = 0.0
-            if 'keyframes' in self.reward_func:
-                self.early_term_cutoff = -99.
-                return keyframe_reward(self, partial(aslip_old_reward, action=action))
-            else:
-                return aslip_old_reward(self, action)
-        elif "iros_paper" in self.reward_func:
-            if 'keyframes' in self.reward_func:
-                self.early_term_cutoff = -99.
-                return keyframe_reward(self, iros_paper_reward)
-            else:
-                return iros_paper_reward(self)
-        elif "5k_speed_reward" in self.reward_func:
-            if 'keyframes' in self.reward_func:
-                self.early_term_cutoff = -99.
-                return keyframe_reward(self, old_speed_reward)
-            else:
-                return old_speed_reward(self)
-        elif "trajmatch_footorient_hiprollvelact_reward" in self.reward_func:
-            if 'keyframes' in self.reward_func:
-                self.early_term_cutoff = -99.
-                return keyframe_reward(self, trajmatch_footorient_hiprollvelact_reward)
-            else:
-                return trajmatch_footorient_hiprollvelact_reward(self)
-        elif "speedmatch_footorient_hiprollvelact_reward" in self.reward_func:
-            if 'keyframes' in self.reward_func:
-                self.early_term_cutoff = -99.
-                return keyframe_reward(self, speedmatch_footorient_hiprollvelact_reward)
-            else:
-                return speedmatch_footorient_hiprollvelact_reward(self)
+            return aslip_old_reward(self, action)
+        elif self.reward_func == "iros_paper":
+            return iros_paper_reward(self)
+        elif self.reward_func == "5k_speed_reward":
+            return old_speed_reward(self)
+        elif self.reward_func == "trajmatch_footorient_hiprollvelact_reward":
+            return trajmatch_footorient_hiprollvelact_reward(self)
+        elif self.reward_func == "speedmatch_footorient_hiprollvelact_reward":
+            return speedmatch_footorient_hiprollvelact_reward(self)
+        elif self.reward_func == "iros_paper_keyframes":
+            return keyframe_reward(self)
         else:
             raise NotImplementedError
 

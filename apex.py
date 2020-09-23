@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--traj", default="walking", type=str,
                         help="reference trajectory to use",
                         choices=('aslip', 'walking', 'stepping', 'jumping'))
-    parser.add_argument("--not_no_delta", default=True, action='store_false', dest='no_delta')
+    parser.add_argument("--learn_delta", default=True, action='store_false', dest='no_delta')
     parser.add_argument("--ik_baseline", default=False, action='store_true', dest='ik_baseline')             # use ik as baseline for aslip + delta policies?
     # mirror loss and reward
     parser.add_argument("--not_mirror", default=True, action='store_false', dest='mirror')             # mirror actions or not

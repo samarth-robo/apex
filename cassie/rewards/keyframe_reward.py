@@ -1,23 +1,47 @@
 import numpy as np
+from cassie.rewards.iros_paper_reward import iros_paper_reward
 
 class KeyFrameReward(object):
-    def __init__(self):
+    def __init__(self, phase_frac=0.5):
+        """
+        phase_frac = min fraction of phaselen in which all keyframes can be hit
+        """
         self.R = []
+        self.phase_frac = phase_frac
 
-    def __call__(self, sim, reward_fn):
-        self.R.append([reward_fn(sim, ref_state=r, free_com=True)
-                       for r in sim.keyframes])
-        if (sim.aslip_traj and sim.phase == sim.phaselen-1) or \
-                (sim.phase == sim.phaselen):
-            return self._dtw_reward(sim)
-        else:
-            return 0
+    def __call__(self, env):
+        self.R.append([iros_paper_reward(env, ref_state=k) for k in env.keyframes])
+        reward = (self.phase_frac/env.phaselen) * self._stability_reward(env)
+        if (env.aslip_traj and env.phase == env.phaselen) or env.done or \
+                (env.phase > env.phaselen) or (env.phase_state == 3):
+            reward = reward + self._keyframe_reward(env) - \
+                (float(env.phase)/env.phaselen)
+        return reward
 
-    def _dtw_reward(self, sim):
+    def _keyframe_reward(self, env):
+        """
+        Matches sparse keyframes using Dynamic Time Warping, and calculates 
+        maximum possible keyframe matching envilarity reward
+        """
         # rows = keyframes, cols = trajectory
         D = -np.ascontiguousarray(np.asarray(self.R).T)
         self.R = []
         return calc_dtw(D)
+
+    def _stability_reward(self, env):
+        # pelvis orientation
+        pelvis_orientation_cost = 1 - \
+            np.inner([1, 0, 0, 0], env.cassie_state.pelvis.orientation[:])**2
+        # COM sideways deviation from center of foot pos
+        foot_center = (env.l_foot_pos + env.r_foot_pos) * 0.5
+        com_deviation = np.linalg.norm([foot_center[0]-env.sim.qpos[0],
+                                        foot_center[1]-env.sim.qpos[1]])
+        # TODO: penalize leg plane not being vertical
+        reward = 0.4*np.exp(-pelvis_orientation_cost) +\
+            0.4*np.exp(-com_deviation) +\
+            0.1*np.exp(-env.torque_cost) +\
+            0.1*np.exp(-env.smooth_cost)
+        return 0
 
 
 def calc_dtw(D, return_match=False):
@@ -47,9 +71,9 @@ def calc_dtw(D, return_match=False):
     # plt.figure();
     # plt.imshow(CC, cmap='Reds')
     # plt.title('C')
-    reward = -C[-1, -1]
+    reward = -C[-1, -1] / I
     if small_traj:
-      reward = reward / I * J
+      reward = reward / J
     if return_match:
         i, j = I-1, J-1
         match = [(i, j)]
