@@ -271,9 +271,9 @@ if __name__ == "__main__":
 
         args = parser.parse_args()
 
-        run_args = pickle.load(open(args.path + "experiment.pkl", "rb"))
+        run_args = pickle.load(open(args.path + "/experiment.pkl", "rb"))
 
-        policy = torch.load(args.path + "actor.pt")
+        policy = torch.load(args.path + "/actor.pt")
         policy.eval()
 
         # eval_policy(policy, args, run_args)

@@ -134,4 +134,4 @@ ref_qposes.png
 *.sh.e*
 *.sh.o*
 
-
+logs/*

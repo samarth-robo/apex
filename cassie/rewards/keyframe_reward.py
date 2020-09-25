@@ -2,17 +2,16 @@ import numpy as np
 from cassie.rewards.iros_paper_reward import iros_paper_reward
 
 class KeyFrameReward(object):
-    def __init__(self, phase_frac=0.5):
+    def __init__(self):
         """
         phase_frac = min fraction of phaselen in which all keyframes can be hit
         """
         self.R = []
-        self.phase_frac = phase_frac
 
     def __call__(self, env):
         self.R.append([iros_paper_reward(env, ref_state=k) for k in env.keyframes])
-        reward = (self.phase_frac/env.phaselen) * self._stability_reward(env)
-        if (env.aslip_traj and env.phase == env.phaselen) or env.done or \
+        reward = self._stability_reward(env) / float(env.phaselen)
+        if (env.aslip_traj and env.phase == env.phaselen) or \
                 (env.phase > env.phaselen) or (env.phase_state == 3):
             reward = reward + self._keyframe_reward(env) - \
                 (float(env.phase)/env.phaselen)
@@ -26,7 +25,8 @@ class KeyFrameReward(object):
         # rows = keyframes, cols = trajectory
         D = -np.ascontiguousarray(np.asarray(self.R).T)
         self.R = []
-        return calc_dtw(D)
+        reward = calc_dtw(D)
+        return reward
 
     def _stability_reward(self, env):
         # pelvis orientation
@@ -42,7 +42,7 @@ class KeyFrameReward(object):
             0.4*np.exp(-com_deviation) +\
             0.1*np.exp(-env.torque_cost) +\
             0.1*np.exp(-env.smooth_cost)
-        return 0
+        return reward
 
 
 def calc_dtw(D, return_match=False):

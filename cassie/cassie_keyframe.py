@@ -113,7 +113,6 @@ class CassieKeyframeEnv:
         self.time    = 0        # number of time steps in current episode
         self.phase   = 0        # portion of the phase the robot is in
         self.counter = 0        # number of phase cycles completed in episode
-        self.done = False
 
         # NOTE: a reference trajectory represents ONE phase cycle
 
@@ -559,11 +558,6 @@ class CassieKeyframeEnv:
             # print("right tarsus: {:.2f}\tright foot: {:.2f}".format(self.sim.xpos("right-tarsus")[2], self.sim.xpos("right-foot")[2]))
             # while(1):
             #     self.vis.draw(self.sim)
-        self.done = False
-        # TODO: make 0.3 a variable/more transparent
-        height = self.sim.qpos()[2]
-        if (height < 0.4) or (height > 5.0):
-            self.done = True
 
         # make sure trackers aren't None and calculate reward
         self.curr_action = action
@@ -572,8 +566,12 @@ class CassieKeyframeEnv:
         if self.prev_torque is None:
             self.prev_torque = np.asarray(self.cassie_state.motor.torque[:])
         reward = self.compute_reward(action)
-        if reward < self.early_term_cutoff:
-            self.done = True
+        
+        done = False
+        # TODO: make 0.3 a variable/more transparent
+        height = self.sim.qpos()[2]
+        if (height < 0.4) or (height > 5.0) or (reward < self.early_term_cutoff):
+            done = True
 
         # update previous action
         self.prev_action = action
@@ -602,9 +600,9 @@ class CassieKeyframeEnv:
 
         if return_omniscient_state:
             return self.get_full_state(), self.get_omniscient_state(), reward, \
-                self.done, {}
+                done, {}
         else:
-            return self.get_full_state(), reward, self.done, {}
+            return self.get_full_state(), reward, done, {}
 
     # More basic, faster version of step
     def step_basic(self, action, return_omniscient_state=False):
@@ -706,7 +704,6 @@ class CassieKeyframeEnv:
         self.counter = 0
         self.phase_state = 0
         self.landing_phase = 0
-        self.done = False
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 
@@ -846,7 +843,6 @@ class CassieKeyframeEnv:
         self.phase_add = 1
         self.phase_state = 0
         self.landing_phase = 0
-        self.done = False
 
         self.state_history = [np.zeros(self._obs) for _ in range(self.history+1)]
 

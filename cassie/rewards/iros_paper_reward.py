@@ -1,15 +1,12 @@
 import numpy as np
 
-def iros_paper_reward(self, ref_state=None):
+def iros_paper_reward(self, ref_state=None, joint_weights=180.0/np.pi*
+                      np.asarray([0.15, 0.15, 0.1, 0.05, 0.05, 0.15, 0.15, 0.1, 0.05, 0.05])):
     qpos = np.copy(self.sim.qpos())
     qvel = np.copy(self.sim.qvel())
 
     ref_pos, ref_vel = ref_state if ref_state is not None \
         else self.get_ref_state(self.phase)
-
-    # TODO: should be variable; where do these come from?
-    # TODO: see magnitude of state variables to gauge contribution to reward
-    weight = [0.15, 0.15, 0.1, 0.05, 0.05, 0.15, 0.15, 0.1, 0.05, 0.05]
 
     joint_error       = 0
     com_error         = 0
@@ -21,7 +18,7 @@ def iros_paper_reward(self, ref_state=None):
         target = ref_pos[j]
         actual = qpos[j]
 
-        joint_error += 30 * weight[i] * (target - actual) ** 2
+        joint_error += joint_weights[i] * (target - actual) ** 2
 
     # center of mass: x, y, z
     idx = [0, 1, 2]
@@ -31,14 +28,10 @@ def iros_paper_reward(self, ref_state=None):
 
         # NOTE: in Xie et al y target is 0
 
-        com_error += (target - actual) ** 2
+        com_error += 100 * (target - actual) ** 2
 
     # COM orientation: qx, qy, qz
-    for j in [4, 5, 6]:
-        target = ref_pos[j] # NOTE: in Xie et al orientation target is 0
-        actual = qpos[j]
-
-        orientation_error += (target - actual) ** 2
+    orientation_error = 1 - np.inner(ref_pos[3:7], qpos[3:7])**2
 
     # left and right shin springs
     for i in [15, 29]:
@@ -46,6 +39,8 @@ def iros_paper_reward(self, ref_state=None):
         actual = qpos[i]
 
         spring_error += 1000 * (target - actual) ** 2      
+    
+    # print('Joint {:f}, COM {:f}, orientation {:f}, spring {:f}'.format(0.5*np.exp(-joint_error), 0.3*np.exp(-com_error), 0.1*np.exp(-orientation_error), 0.1*np.exp(-spring_error)))
 
     reward = 0.5 * np.exp(-joint_error) +       \
                 0.3 * np.exp(-com_error) +         \
