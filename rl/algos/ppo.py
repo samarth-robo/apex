@@ -517,9 +517,10 @@ def run_experiment(args):
     os.environ['OMP_NUM_THREADS'] = '1'
     if not ray.is_initialized():
         if args.redis_address is not None:
-            ray.init(num_cpus=args.num_procs, redis_address=args.redis_address)
+            ray.init(num_cpus=args.num_procs, redis_address=args.redis_address,
+                  temp_dir=args.ray_temp_dir)
         else:
-            ray.init(num_cpus=args.num_procs)
+            ray.init(num_cpus=args.num_procs, temp_dir=args.ray_temp_dir)
 
     # Set seeds
     torch.manual_seed(args.seed)

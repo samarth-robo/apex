@@ -9,7 +9,7 @@ osp = os.path
 
 
 def random_filename(N=5):
-    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(N))
+    return ''.join(random.SystemRandom().choice(string.ascii_lowercase + string.digits) for _ in range(N))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -17,8 +17,10 @@ if __name__ == '__main__':
     parser.add_argument('-c', default=1, type=int)
     parser.add_argument('-g', default=0, type=int)
     parser.add_argument('--qos', default='normal')
-    parser.add_argument('cmd')
+    parser.add_argument('cmd', nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    cmd = ' '.join(args.cmd)
+    print(cmd)
 
     if not osp.isdir('logs'):
         os.mkdir('logs')
@@ -35,4 +37,8 @@ if __name__ == '__main__':
         fh.writelines('#SBATCH --qos {:s}\n'.format(args.qos))
         if args.g > 0:
             fh.writelines('#SBATCH --gres=gpu:{:d}\n'.format(args.g))
-        fh.writelines('{:s}\n'.format(args.cmd))
+        # fh.writelines('#SBATCH --get-user-env\n')
+        fh.writelines('eval "$(conda shell.bash hook)"\n')
+        fh.writelines('conda activate apex\n')
+        fh.writelines('{:s}\n'.format(cmd))
+    os.system('sbatch {:s}'.format(job_filename))

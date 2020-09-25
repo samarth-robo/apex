@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
+eval "$(conda shell.bash hook)"
 conda activate apex
-tensorboard --bind-all --logdir trained_models
+tensorboard --bind_all --logdir trained_models/ppo

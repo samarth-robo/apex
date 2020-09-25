@@ -27,6 +27,7 @@ if __name__ == "__main__":
     # mirror loss and reward
     parser.add_argument("--not_mirror", default=True, action='store_false', dest='mirror')             # mirror actions or not
     parser.add_argument("--reward", required=True, type=str)                                             # reward to use. this is a required argument
+    parser.add_argument('--ray_temp_dir', default='/tmp/ray')
 
     """
         General arguments for configuring the logger
