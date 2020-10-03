@@ -5,7 +5,6 @@ from .aslip_rewards import *
 from .rnn_dyn_random_reward import *
 from .iros_paper_reward import *
 from .command_reward import *
-from .keyframe_reward import *
 
 # from .speedmatch_footorient_joint_smooth_reward import *
 from .speedmatch_rewards import *

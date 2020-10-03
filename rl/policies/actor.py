@@ -140,7 +140,9 @@ class LSTM_Actor(Actor):
 
 
 class Gaussian_FF_Actor(Actor):  # more consistent with other actor naming conventions
-    def __init__(self, state_dim, action_dim, layers=(256, 256), env_name=None, nonlinearity=torch.nn.functional.relu, fixed_std=None, bounded=False, normc_init=True):
+    def __init__(self, state_dim, action_dim, layers=(256, 256), env_name=None,
+                 nonlinearity=torch.nn.functional.relu, fixed_std=None,
+                 bounded=False, normc_init=True, n_bounded=0):
         super(Gaussian_FF_Actor, self).__init__()
 
         self.actor_layers = nn.ModuleList()
@@ -169,6 +171,7 @@ class Gaussian_FF_Actor(Actor):  # more consistent with other actor naming conve
         self.normc_init = normc_init
 
         self.bounded = bounded
+        self.n_bounded = n_bounded
 
         self.init_parameters()
 
@@ -186,7 +189,7 @@ class Gaussian_FF_Actor(Actor):  # more consistent with other actor naming conve
         mean = self.means(x)
 
         if self.bounded:
-            mean = torch.tanh(mean)
+            mean[..., -self.n_bounded:] = torch.tanh(mean[..., -self.n_bounded:])
 
         if self.learn_std:
             # sd = torch.clamp(self.log_stds(x), LOG_STD_LO, LOG_STD_HI).exp()

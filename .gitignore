@@ -6,7 +6,7 @@ cassie/pickled
 sim-to-real/
 cassie/cassieIK_SL.pt
 cassie/taskspace_to_jointpos.pt
-.vscode/
+.vscode/settings.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

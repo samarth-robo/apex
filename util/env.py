@@ -3,8 +3,7 @@ import time
 import torch
 import numpy as np
 
-from cassie import CassieEnv, CassieTrajEnv, CassiePlayground, CassieStandingEnv,\
-    CassieKeyframeEnv
+from cassie import CassieEnv, CassieTrajEnv, CassiePlayground, CassieStandingEnv
 
 def env_factory(path, command_profile="clock", input_profile="full", simrate=50, dynamics_randomization=True, mirror=False, learn_gains=False, reward=None, history=0, no_delta=True, traj=None, ik_baseline=False, **kwargs):
     from functools import partial

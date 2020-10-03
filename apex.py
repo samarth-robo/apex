@@ -22,11 +22,12 @@ if __name__ == "__main__":
     parser.add_argument("--traj", default="walking", type=str,
                         help="reference trajectory to use",
                         choices=('aslip', 'walking', 'stepping', 'jumping'))
-    parser.add_argument("--not_no_delta", default=True, action='store_false', dest='no_delta')
+    parser.add_argument("--do_delta", action='store_false', dest='no_delta')
     parser.add_argument("--ik_baseline", default=False, action='store_true', dest='ik_baseline')             # use ik as baseline for aslip + delta policies?
     # mirror loss and reward
     parser.add_argument("--not_mirror", default=True, action='store_false', dest='mirror')             # mirror actions or not
-    parser.add_argument("--reward", required=True, type=str)                                             # reward to use. this is a required argument
+    parser.add_argument("--reward", required=True, type=str)                                           # reward to use. this is a required argument
+    parser.add_argument("--ray_temp_dir", default="/tmp/ray")
 
     """
         General arguments for configuring the logger
@@ -249,7 +250,8 @@ if __name__ == "__main__":
         parser.add_argument("--max_grad_norm", type=float, default=0.05, help="Value to clip gradients at.")
         parser.add_argument("--max_traj_len", type=int, default=400, help="Max episode horizon")
         parser.add_argument("--recurrent",   action='store_true')
-        parser.add_argument("--bounded",   type=bool, default=False)
+        parser.add_argument("--bounded", action="store_true")
+        parser.add_argument("--n_bounded", type=int, default=0)
         args = parser.parse_args()
 
         args = parse_previous(args)

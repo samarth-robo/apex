@@ -71,10 +71,20 @@ class CassieTrajEnv:
             self.aslip_traj = False
             if traj == "walking":
                 traj_path = os.path.join(dirname, "trajectory", "stepdata.bin")
+                self.trajectory = CassieTrajectory(traj_path)
             elif traj == "stepping":
                 traj_path = os.path.join(dirname, "trajectory", "more-poses-trial.bin")
-            self.trajectory = CassieTrajectory(traj_path)
+                self.trajectory = CassieTrajectory(traj_path)
+            elif traj == "jumping":
+                jumping_duration = 1.0
+                N = jumping_duration * 2000
+                traj_path = os.path.join(dirname, "trajectory", "jumping.bin")
+                self.trajectory = CassieKeyframes(traj_path, N)
             self.speed = 0
+
+        self.trajectory.numerical_qvel(0)
+        self.trajectory.numerical_qvel(self.trajectory.length)
+        self.trajectory.numerical_qvel(np.random.uniform(0, self.trajectory.length))
 
         self.observation_space, self.clock_inds, self.mirrored_obs = self.set_up_state_space()
 
@@ -90,13 +100,13 @@ class CassieTrajEnv:
         # learn gains means there is a delta on the default PD gains ***FOR EACH LEG***
         self.learn_gains = learn_gains
         if self.learn_gains:
-            self.action_space = np.zeros(10 + 20)
+            self.action_space = np.zeros(10 + 20 + 1)
             self.mirrored_acts = [-5, -6, 7, 8, 9, -0.1, -1, 2, 3, 4,
                                   -15, -16, 17, 18, 19, -10, -11, 12, 13, 14,
-                                  -25, -26, 27, 28, 29, -20, -21, 22, 23, 24]
+                                  -25, -26, 27, 28, 29, -20, -21, 22, 23, 24, 30]
         else:
-            self.action_space = np.zeros(10)
-            self.mirrored_acts = [-5, -6, 7, 8, 9, -0.1, -1, 2, 3, 4]
+            self.action_space = np.zeros(10 + 1)
+            self.mirrored_acts = [-5, -6, 7, 8, 9, -0.1, -1, 2, 3, 4, 10]
 
         self.u = pd_in_t()
 
@@ -113,8 +123,12 @@ class CassieTrajEnv:
         # should be floor(len(traj) / simrate) - 1
         # should be VERY cautious here because wrapping around trajectory
         # badly can cause assymetrical/bad gaits
-        self.phaselen = floor(len(self.trajectory) / self.simrate) - 1 if not self.aslip_traj else self.trajectory.length - 1
-        self.phase_add = 1
+        if self.aslip_traj:
+            self.phaselen = self.trajectory.length - 1
+        else:
+            self.phaselen = self.trajectory.length / self.simrate
+        self.phase_add = 1.0
+        self.phase_add_scale = 0.2
 
         # NOTE: phase_based modifies self.phaselen throughout training
 
@@ -128,15 +142,16 @@ class CassieTrajEnv:
             self.set_up_clock_reward(dirname)
 
         # see include/cassiemujoco.h for meaning of these indices
+        # indices for action
         self.pos_idx = [7, 8, 9, 14, 20, 21, 22, 23, 28, 34]
         self.vel_idx = [6, 7, 8, 12, 18, 19, 20, 21, 25, 31]
-
+        # indices for observation
         self.pos_index = np.array([1,2,3,4,5,6,7,8,9,14,15,16,20,21,22,23,28,29,30,34])
         self.vel_index = np.array([0,1,2,3,4,5,6,7,8,12,13,14,18,19,20,21,25,26,27,31])
 
         # CONFIGURE OFFSET for No Delta Policies
         if self.aslip_traj:
-            ref_pos, ref_vel = self.get_ref_state(self.phase)
+            ref_pos = self.get_ref_state(self.phase)
             self.offset = ref_pos[self.pos_idx]
         else:
             self.offset = np.array([0.0045, 0.0, 0.4973, -1.1997, -1.5968, 0.0045, 0.0, 0.4973, -1.1997, -1.5968])
@@ -146,8 +161,8 @@ class CassieTrajEnv:
         self.max_simrate = self.simrate + 10
         self.min_simrate = self.simrate - 20
 
-        self.max_speed = 4.0
-        self.min_speed = -0.3
+        self.max_speed = 1.0
+        self.min_speed = 1.0
 
         self.max_side_speed  = 0.3
         self.min_side_speed  = -0.3
@@ -317,9 +332,8 @@ class CassieTrajEnv:
                 ref_traj_size = 18
                 mirrored_traj = np.array([6,7,8,9,10,11,0.1,1,2,3,4,5,12,13,14,15,16,17])
             else:
-                ref_traj_size = 40
-                mirrored_traj = np.array([0.1, 1, 2, 3, 4, 5, -13, -14, 15, 16, 17, 18, 19, -6, -7, 8, 9, 10, 11, 12,
-                                          20, 21, 22, 23, 24, 25, -33, -34, 35, 36, 37, 38, 39, -26, -27, 28, 29, 30, 31, 32])
+                ref_traj_size = 20
+                mirrored_traj = np.array([0.1, 1, 2, 3, 4, 5, -13, -14, 15, 16, 17, 18, 19, -6, -7, 8, 9, 10, 11, 12])
             mirrored_traj_sign = np.multiply(np.sign(mirrored_traj), obs_size+np.floor(np.abs(mirrored_traj)))
             mirrored_obs = np.concatenate([base_mir_obs, mirrored_traj_sign])
             clock_inds = None
@@ -347,9 +361,9 @@ class CassieTrajEnv:
 
         if not self.ik_baseline:
             if self.aslip_traj and self.phase == self.phaselen - 1:
-                ref_pos, ref_vel = self.get_ref_state(0)
+                ref_pos = self.get_ref_state(0)
             else:
-                ref_pos, ref_vel = self.get_ref_state(self.phase + self.phase_add)
+                ref_pos = self.get_ref_state(self.phase+self.phase_add)
         else:
             ref_pos = self.trajectory.ik_pos[self.simsteps]
 
@@ -418,9 +432,9 @@ class CassieTrajEnv:
     def step_sim_basic(self, action, learned_gains=None):
         if not self.ik_baseline:
             if self.aslip_traj and self.phase == self.phaselen - 1:
-                ref_pos, ref_vel = self.get_ref_state(0)
+                ref_pos = self.get_ref_state(0)
             else:
-                ref_pos, ref_vel = self.get_ref_state(self.phase + self.phase_add)
+                ref_pos = self.get_ref_state(self.phase+self.phase_add)
         else:
             ref_pos = self.trajectory.ik_pos[self.simsteps]
 
@@ -477,7 +491,11 @@ class CassieTrajEnv:
         self.hiproll_act = 0
 
         if self.learn_gains:
-            action, learned_gains = action[0:10], action[10:]
+            action, pa, learned_gains = action[:10], action[10], action[11:]
+        else:
+            action, pa = action[:10], action[10]
+        pa = min(max(pa, -1.0), 1.0)
+        self.phase_add = 1.0 + pa*self.phase_add_scale
 
         for i in range(self.simrate):
             if self.learn_gains:
@@ -520,7 +538,8 @@ class CassieTrajEnv:
         self.time  += 1
         self.phase += self.phase_add
 
-        if (self.aslip_traj and self.phase >= self.phaselen) or self.phase > self.phaselen:
+        if (self.aslip_traj and self.phase >= self.phaselen) or \
+                (self.phase > self.phaselen):
             self.last_pelvis_pos = self.sim.qpos()[0:3]
             self.simsteps = 0
             self.phase = 0
@@ -573,7 +592,11 @@ class CassieTrajEnv:
     def step_basic(self, action, return_omniscient_state=False):
 
         if self.learn_gains:
-            action, learned_gains = action[0:10], action[10:]
+            action, pa, learned_gains = action[:10], action[10], action[11:]
+        else:
+            action, pa = action[:10], action[10]
+        pa = min(max(pa, -1.0), 1.0)
+        self.phase_add = 1.0 + pa*self.phase_add_scale
 
         for i in range(self.simrate):
             if self.learn_gains:
@@ -635,7 +658,7 @@ class CassieTrajEnv:
         elif self.reward_func == "aslip_clock" or self.reward_func == "load_clock":
             pass
         # ELSE use simple relationship to define swing and stance duration
-        else:
+        elif self.clock_based:
             if self.reward_func == "switch_clock":
                 if self.speed < self.switch_speed:
                     self.stance_mode = "grounded"
@@ -648,7 +671,7 @@ class CassieTrajEnv:
 
         self.simsteps = 0
 
-        self.phase = random.randint(0, floor(self.phaselen))
+        self.phase = random.randint(0, self.phaselen)
         self.time = 0
         self.counter = 0
 
@@ -749,7 +772,8 @@ class CassieTrajEnv:
         # apply dynamics
         self.sim.set_const()
 
-        qpos, qvel = self.get_ref_state(self.phase)
+        qpos = self.get_ref_state(self.phase)
+        qvel = self.trajectory.numerical_qvel(self.phase)
 
         if self.aslip_traj:
             qvel = np.zeros(qvel.shape)
@@ -808,7 +832,8 @@ class CassieTrajEnv:
             self.left_clock, self.right_clock, self.phaselen = create_phase_reward(self.swing_duration, self.stance_duration, self.strict_relaxer, self.stance_mode, self.have_incentive, FREQ=2000//self.simrate)
 
         if not full_reset:
-            qpos, qvel = self.get_ref_state(self.phase)
+            qpos = self.get_ref_state(self.phase)
+            qvel = self.trajectory.numerical_qvel(self.phase)
             self.sim.set_qpos(qpos)
             self.sim.set_qvel(qvel)
 
@@ -868,7 +893,7 @@ class CassieTrajEnv:
             # update phase
             self.phase = int(self.phaselen * self.phase / old_phaselen)
             # new offset
-            ref_pos, ref_vel = self.get_ref_state(self.phase)
+            ref_pos = self.get_ref_state(self.phase)
             self.offset = ref_pos[self.pos_idx]
         else:
             self.speed = np.clip(new_speed, self.min_speed, self.max_speed)
@@ -928,11 +953,7 @@ class CassieTrajEnv:
             phase = self.phase
 
         if phase > self.phaselen:
-            phase = 0
-
-        # TODO: make this not so hackish
-        if phase > floor(len(self.trajectory) / self.simrate) - 1:
-            phase = floor((phase / self.phaselen) * len(self.trajectory) / self.simrate)
+            phase = self.phaselen
 
         desired_ind = phase * self.simrate if not self.aslip_traj else phase
         # phase_diff = desired_ind - math.floor(desired_ind)
@@ -945,8 +966,7 @@ class CassieTrajEnv:
         #     vel = vel_prev + phase_diff * (vel_next - vel_prev)
         # else:
         # print("desired ind: ", desired_ind)
-        pos = np.copy(self.trajectory.qpos[int(desired_ind)])
-        vel = np.copy(self.trajectory.qvel[int(desired_ind)])
+        pos = self.trajectory.lerp(desired_ind)
 
         # this is just setting the x to where it "should" be given the number
         # of cycles
@@ -962,20 +982,10 @@ class CassieTrajEnv:
         else:
             pos[0] += (self.trajectory.qpos[-1, 0] - self.trajectory.qpos[0, 0]) * self.counter
 
-        # setting lateral distance target to 0?
-        # regardless of reference trajectory?
-        pos[1] = 0
-
-        if not self.aslip_traj:
-            vel[0] *= self.speed
-
-        return pos, vel
+        return pos
 
     def get_full_state(self):
-        qpos = np.copy(self.sim.qpos())
-        qvel = np.copy(self.sim.qvel())
-
-        ref_pos, ref_vel = self.get_ref_state(self.phase + self.phase_add)
+        ref_pos = self.get_ref_state(self.phase + self.phase_add)
 
         # TODO: maybe convert to set subtraction for clarity
         # {i for i in range(35)} -
@@ -1010,7 +1020,7 @@ class CassieTrajEnv:
                 ext_state = np.concatenate(get_ref_aslip_unaltered_state(self, self.phase))
         # command --> REF_TRAJ_BASED : agility trajectory
         else:
-            ext_state = np.concatenate([ref_pos[self.pos_index], ref_vel[self.vel_index]])
+            ext_state = ref_pos[self.pos_index]
 
         # Update orientation
         new_orient = self.rotate_to_orient(self.cassie_state.pelvis.orientation[:])

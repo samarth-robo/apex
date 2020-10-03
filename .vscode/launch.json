@@ -1,0 +1,76 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "train",
+            "type": "python",
+            "request": "launch",
+            "program": "apex.py",
+            "console": "integratedTerminal",
+            "args": [
+                "${input:algo}",
+                "--env_name", "${input:env_name}",
+                "--run_name", "${input:experiment_name}",
+                "--reward", "${input:reward}",
+                "--num_procs", "30",
+                "--command_profile", "traj",
+                "--traj", "jumping",
+                "--ray_temp_dir", "/tmp/ray777",
+                "--bounded",
+                "--n_bounded", "1",
+            ]
+        },
+        {
+            "name": "eval",
+            "type": "python",
+            "request": "launch",
+            "program": "apex.py",
+            "console": "integratedTerminal",
+            "args": [
+                "eval",
+                "--env_name", "${input:env_name}",
+                "--run_name", "${input:experiment_name}",
+                "--reward", "${input:reward}",
+                "--command_profile", "traj",
+                "--traj", "jumping",
+                "--path", "${input:model_path}",
+                "--ray_temp_dir", "/tmp/ray777",
+            ]
+        },
+    ],
+    "inputs": [
+        {
+            "id": "algo",
+            "default": "ppo",
+            "description": "RL Algorithm",
+            "type": "promptString",
+        },
+        {
+            "id": "env_name",
+            "default": "CassieTraj-v0",
+            "description": "Training Environment",
+            "type": "promptString",
+        },
+        {
+            "id": "experiment_name",
+            "default": "develop",
+            "description": "Experiment Name",
+            "type": "promptString",
+        },
+        {
+            "id": "reward",
+            "default": "iros_paper",
+            "description": "Reward Function",
+            "type": "promptString",
+        },
+        {
+            "id": "model_path",
+            "default": "trained_models/ppo/CassieKeyframe-v0/keyframe+stability",
+            "description": "Path to trained model for evaluation",
+            "type": "promptString",
+        },
+    ]
+}

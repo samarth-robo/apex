@@ -517,9 +517,10 @@ def run_experiment(args):
     os.environ['OMP_NUM_THREADS'] = '1'
     if not ray.is_initialized():
         if args.redis_address is not None:
-            ray.init(num_cpus=args.num_procs, redis_address=args.redis_address)
+            ray.init(num_cpus=args.num_procs, redis_address=args.redis_address,
+                     temp_dir=args.ray_temp_dir)
         else:
-            ray.init(num_cpus=args.num_procs)
+            ray.init(num_cpus=args.num_procs, temp_dir=args.ray_temp_dir)
 
     # Set seeds
     torch.manual_seed(args.seed)
@@ -538,9 +539,9 @@ def run_experiment(args):
             critic = LSTM_V(obs_dim)
         else:
             if args.learn_stddev:
-                policy = Gaussian_FF_Actor(obs_dim, action_dim, fixed_std=None, env_name=args.env_name, bounded=args.bounded)
+                policy = Gaussian_FF_Actor(obs_dim, action_dim, fixed_std=None, env_name=args.env_name, bounded=args.bounded, n_bounded=args.n_bounded)
             else:
-                policy = Gaussian_FF_Actor(obs_dim, action_dim, fixed_std=np.exp(args.std_dev), env_name=args.env_name, bounded=args.bounded)
+                policy = Gaussian_FF_Actor(obs_dim, action_dim, fixed_std=np.exp(args.std_dev), env_name=args.env_name, bounded=args.bounded, n_bounded=args.n_bounded)
             critic = FF_V(obs_dim)
 
         with torch.no_grad():
