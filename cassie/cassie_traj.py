@@ -29,7 +29,8 @@ class CassieTrajEnv:
     def __init__(self, traj='walking', simrate=50, command_profile="clock", input_profile="full", dynamics_randomization=True,
                  learn_gains=False, reward="iros_paper",
                  no_delta=True, ik_baseline=False,
-                 config="./cassie/cassiemujoco/cassie.xml", history=0, **kwargs):
+                 config="./cassie/cassiemujoco/cassie.xml", history=0, phase_add_scale=0.4,
+                 **kwargs):
 
         dirname = os.path.dirname(__file__)
         self.config = config
@@ -128,7 +129,7 @@ class CassieTrajEnv:
         else:
             self.phaselen = self.trajectory.length / self.simrate
         self.phase_add = 1.0
-        self.phase_add_scale = 0.2
+        self.phase_add_scale = phase_add_scale
 
         # NOTE: phase_based modifies self.phaselen throughout training
 
