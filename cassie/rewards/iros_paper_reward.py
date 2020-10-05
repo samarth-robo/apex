@@ -19,7 +19,7 @@ def iros_paper_reward(self):
         target = ref_pos[j]
         actual = qpos[j]
 
-        joint_error += 30 * weight[i] * (target - actual) ** 2
+        joint_error += 40 * weight[i] * (target - actual) ** 2
 
     # center of mass: x, y, z
     idx = [0, 1, 2]
@@ -29,7 +29,7 @@ def iros_paper_reward(self):
 
         # NOTE: in Xie et al y target is 0
 
-        com_error += (target - actual) ** 2
+        com_error += 30 * (target - actual) ** 2
 
     # COM orientation: qx, qy, qz
     orientation_error = 1 - np.inner(ref_pos[3:7], qpos[3:7])**2
@@ -41,10 +41,20 @@ def iros_paper_reward(self):
 
         spring_error += 1000 * (target - actual) ** 2      
 
-    reward = 0.5 * np.exp(-joint_error) +       \
-                0.3 * np.exp(-com_error) +         \
+    reward = 0.4 * np.exp(-joint_error) +       \
+                0.4 * np.exp(-com_error) +         \
                 0.1 * np.exp(-orientation_error) + \
                 0.1 * np.exp(-spring_error)
+
+    if self.debug:
+        print(
+            f"reward:  \t{reward:.3f} / 1.000\n"
+            f"phase:  \t{self.phase/self.phaselen:.3f}\n"
+            f"joint reward:\t{0.4*np.exp(-joint_error):.3f} / 0.4\n"
+            f"com reward:\t{0.4*np.exp(-com_error):.3f} / 0.4\n"
+            f"orientation reward:\t{0.1*np.exp(-orientation_error):.3f} / 0.1\n"
+            f"spring reward:\t{0.1*np.exp(-spring_error):.3f} / 0.1\n"
+        )
 
     # reward = np.sign(qvel[0])*qvel[0]**2
     # desired_speed = 3.0

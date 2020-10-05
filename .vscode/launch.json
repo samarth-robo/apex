@@ -31,6 +31,7 @@
             "console": "integratedTerminal",
             "args": [
                 "eval",
+                "--debug",
                 "--env_name", "${input:env_name}",
                 "--run_name", "${input:experiment_name}",
                 "--reward", "${input:reward}",
@@ -68,7 +69,7 @@
         },
         {
             "id": "model_path",
-            "default": "trained_models/ppo/CassieKeyframe-v0/keyframe+stability",
+            "default": "trained_models/ppo/CassieTraj-v0/interp_ts0.4_uneven",
             "description": "Path to trained model for evaluation",
             "type": "promptString",
         },
