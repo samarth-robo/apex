@@ -68,7 +68,7 @@ class EvalProcessClass():
         )()
         
         if args.debug:
-            env.debug = True
+            env.env.debug = True
 
         if args.terrain is not None and ".npy" in args.terrain:
             env.sim = CassieSim("cassie_hfield.xml")

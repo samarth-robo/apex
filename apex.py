@@ -244,7 +244,7 @@ if __name__ == "__main__":
         parser.add_argument("--clip", type=float, default=0.2, help="Clipping parameter for PPO surrogate loss")
         parser.add_argument("--minibatch_size", type=int, default=64, help="Batch size for PPO updates")
         parser.add_argument("--epochs", type=int, default=3, help="Number of optimization epochs per PPO update") #Xie
-        parser.add_argument("--num_steps", type=int, default=5096, help="Number of sampled timesteps per gradient estimate")
+        parser.add_argument("--num_steps", type=int, default=12000, help="Number of sampled timesteps per gradient estimate")
         parser.add_argument("--use_gae", type=bool, default=True,help="Whether or not to calculate returns using Generalized Advantage Estimation")
         parser.add_argument("--num_procs", type=int, default=30, help="Number of threads to train on")
         parser.add_argument("--max_grad_norm", type=float, default=0.05, help="Value to clip gradients at.")
@@ -259,6 +259,7 @@ if __name__ == "__main__":
         run_experiment(args)
 
     elif sys.argv[1] == 'eval':
+        import os.path as osp
 
         sys.argv.remove(sys.argv[1])
 
@@ -273,9 +274,10 @@ if __name__ == "__main__":
 
         args = parser.parse_args()
 
-        run_args = pickle.load(open(args.path + "experiment.pkl", "rb"))
+        with open(osp.join(args.path, 'experiment.pkl'), 'rb') as f:
+            run_args = pickle.load(f)
 
-        policy = torch.load(args.path + "actor.pt")
+        policy = torch.load(osp.join(args.path, "actor.pt"))
         policy.eval()
 
         # eval_policy(policy, args, run_args)
