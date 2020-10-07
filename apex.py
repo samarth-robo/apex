@@ -242,7 +242,7 @@ if __name__ == "__main__":
         parser.add_argument("--std_dev", type=int, default=-1.5, help="exponent of exploration std_dev")
         parser.add_argument("--entropy_coeff", type=float, default=0.0, help="Coefficient for entropy regularization")
         parser.add_argument("--clip", type=float, default=0.2, help="Clipping parameter for PPO surrogate loss")
-        parser.add_argument("--minibatch_size", type=int, default=64, help="Batch size for PPO updates")
+        parser.add_argument("--minibatch_size", type=int, default=1024, help="Batch size for PPO updates")
         parser.add_argument("--epochs", type=int, default=3, help="Number of optimization epochs per PPO update") #Xie
         parser.add_argument("--num_steps", type=int, default=12000, help="Number of sampled timesteps per gradient estimate")
         parser.add_argument("--use_gae", type=bool, default=True,help="Whether or not to calculate returns using Generalized Advantage Estimation")
