@@ -39,6 +39,7 @@
                 "--traj", "jumping",
                 "--path", "${input:model_path}",
                 "--ray_temp_dir", "/tmp/ray777",
+                "--do_delta",
             ]
         },
     ],
@@ -69,7 +70,7 @@
         },
         {
             "id": "model_path",
-            "default": "trained_models/ppo/CassieTraj-v0/interp_ts0.4_uneven",
+            "default": "trained_models/ppo/CassieTraj-v0/interp_ts0.4_v2_delta_largebatch",
             "description": "Path to trained model for evaluation",
             "type": "promptString",
         },

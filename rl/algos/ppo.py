@@ -405,6 +405,7 @@ class PPO:
             optimizer_start = time.time()
             
             for epoch in range(self.epochs):
+                print("Epoch {:d}".format(epoch))
                 losses = []
                 entropies = []
                 kls = []
@@ -414,6 +415,8 @@ class PPO:
                 else:
                     random_indices = SubsetRandomSampler(range(advantages.numel()))
                     sampler = BatchSampler(random_indices, minibatch_size, drop_last=True)
+                print("BatchSampler: {:.3f}".format(time.time()-optimizer_start))
+                current_time = time.time()
 
                 for indices in sampler:
                     if self.recurrent:
@@ -441,6 +444,8 @@ class PPO:
                     entropies.append(entropy)
                     kls.append(kl)
                     losses.append([actor_loss, entropy, critic_loss, ratio, kl, mirror_loss])
+                print('Update policy: {:f}'.format(time.time()-current_time))
+                current_time = time.time() 
 
                 # TODO: add verbosity arguments to suppress this
                 print(' '.join(["%g"%x for x in np.mean(losses, axis=0)]))
@@ -503,6 +508,8 @@ class PPO:
             if self.highest_reward < avg_eval_reward:
                 self.highest_reward = avg_eval_reward
                 self.save(policy, critic)
+        sys.stdout.flush()
+        
 
 def run_experiment(args):
     from util.env import env_factory
