@@ -1,11 +1,10 @@
 import numpy as np
 
-def iros_paper_reward(self, ref_state=None, free_com=False):
-    qpos = np.copy(self.sim.qpos())
-    qvel = np.copy(self.sim.qvel())
-
-    ref_pos, ref_vel = ref_state if ref_state is not None \
-        else self.get_ref_state(self.phase)
+def iros_paper_reward(self,state):
+    qpos = state[:35]
+    ref_pos = self.traj.qpos[(self.phase%self.phaselen)*self.simrate]
+    ref_pos[0] += (self.phase//self.phaselen) * (self.traj.qpos[-1,0]-self.traj.qpos[0,0])
+    ref_pos[1] = 0
 
     # TODO: should be variable; where do these come from?
     # TODO: see magnitude of state variables to gauge contribution to reward
@@ -16,36 +15,21 @@ def iros_paper_reward(self, ref_state=None, free_com=False):
     orientation_error = 0
     spring_error      = 0
 
+    idx = [7,8,9,14,20, 21,22,23,28,34]
     # each joint pos
-    for i, j in enumerate(self.pos_idx):
-        target = ref_pos[j]
-        actual = qpos[j]
-
-        joint_error += 30 * weight[i] * (target - actual) ** 2
+    joint_error = 30 * np.sum( weight * (qpos[idx] - ref_pos[idx]) ** 2 )
 
     # center of mass: x, y, z
-    idx = [2, ] if free_com else [0, 1, 2]
-    for j in idx:
-        target = ref_pos[j]
-        actual = qpos[j]
-
-        # NOTE: in Xie et al y target is 0
-
-        com_error += (target - actual) ** 2
+    idx = [0, 1, 2]
+    com_error = np.sum( (qpos[idx] - ref_pos[idx]) ** 2 )
 
     # COM orientation: qx, qy, qz
-    for j in [4, 5, 6]:
-        target = ref_pos[j] # NOTE: in Xie et al orientation target is 0
-        actual = qpos[j]
-
-        orientation_error += (target - actual) ** 2
+    idx = [4, 5, 6]
+    orientation_error = np.sum( (qpos[idx] - ref_pos[idx]) ** 2 )
 
     # left and right shin springs
-    for i in [15, 29]:
-        target = ref_pos[i] # NOTE: in Xie et al spring target is 0
-        actual = qpos[i]
-
-        spring_error += 1000 * (target - actual) ** 2      
+    idx = [15, 29]
+    spring_error = 100 * np.sum( (qpos[idx] - ref_pos[idx]) ** 2 )
 
     reward = 0.5 * np.exp(-joint_error) +       \
                 0.3 * np.exp(-com_error) +         \
