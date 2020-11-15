@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval', type=str, default='')
     parser.add_argument('--play_speed', type=float, default=1)
     parser.add_argument('--num_procs', type=int, default=1)
+    parser.add_argument('--host', type=str, default='')
     args = parser.parse_args()
 
     run_experiments(args)

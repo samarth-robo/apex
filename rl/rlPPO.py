@@ -116,7 +116,7 @@ def run_experiments(args):
         env.eval(path=eval_path, play_speed=play_speed)
         sys.exit()
 
-    mpi_tools.mpi_fork(args.num_procs)
+    mpi_tools.mpi_fork(args.num_procs, host=args.host)
     proc_id = mpi_tools.proc_id()
 
     mpi_tools.setup_pytorch_for_mpi()

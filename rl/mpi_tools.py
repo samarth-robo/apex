@@ -34,7 +34,7 @@ def sync_params(module):
         broadcast(p_numpy)
 
 
-def mpi_fork(n, bind_to_core=False):
+def mpi_fork(n, bind_to_core=True, host=''):
     """
     Re-launches the current script with workers linked by MPI.
 
@@ -62,6 +62,8 @@ def mpi_fork(n, bind_to_core=False):
         args = ["mpirun", "-np", str(n)]
         if bind_to_core:
             args += ["-bind-to", "core"]
+        if host:
+            args += ["--host", host]
         args += [sys.executable] + sys.argv
         subprocess.check_call(args, env=env)
         sys.exit()
